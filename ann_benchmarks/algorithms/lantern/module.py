@@ -39,11 +39,11 @@ class Lantern(BaseANN):
         print("creating index...")
         if self._metric == "angular":
             cur.execute(
-                "CREATE INDEX ON items USING hnsw (embedding dist_cos_ops) WITH (M = %d, ef_construction = %d, ef = %d, dim = %d)" % (self._m, self._ef_construction, self._m, X.shape[1])
+                "CREATE INDEX ON items USING hnsw (embedding dist_cos_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
             )
         elif self._metric == "euclidean":
             cur.execute(
-                "CREATE INDEX ON items USING hnsw (embedding dist_l2sq_ops) WITH (M = %d, ef_construction = %d, ef = %d, dim = %d)" % (self._m, self._ef_construction, self._m, X.shape[1])
+                "CREATE INDEX ON items USING hnsw (embedding dist_l2sq_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
             )
         else:
             raise RuntimeError(f"unknown metric {self._metric}")
@@ -53,6 +53,7 @@ class Lantern(BaseANN):
     def set_query_arguments(self, ef_search):
         self._ef_search = ef_search
         self._cur.execute("SET enable_seqscan = false")
+        self._cur.execute("SET hnsw.ef = %d" % ef_search)
 
     def query(self, v, n):
         self._cur.execute(self._query, (v.tolist(), n), binary=True, prepare=True)
