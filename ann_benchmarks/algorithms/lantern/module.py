@@ -13,14 +13,9 @@ class Lantern(BaseANN):
         self._ef_construction = method_param['efConstruction']
         self._cur = None
 
-        if metric == "angular" or metric == "euclidean":
-            # According to Lantern's README: 
-            # ================================
-            # Lantern supports several distance functions in the index. You only
-            # need to specify the distance function used for a column at index
-            # creation time. Lantern will automatically infer the distance
-            # function to use for search so you always use <-> operator in search
-            # queries.
+        if metric == "angular":
+            self._query = "SELECT id FROM items ORDER BY embedding <=> %s::real[] LIMIT %s"
+        if metric == "euclidean":
             self._query = "SELECT id FROM items ORDER BY embedding <-> %s::real[] LIMIT %s"
         else:
             raise RuntimeError(f"unknown metric {metric}")
