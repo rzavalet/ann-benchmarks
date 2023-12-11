@@ -15,7 +15,7 @@ class Lantern(BaseANN):
 
         if metric == "angular":
             self._query = "SELECT id FROM items ORDER BY embedding <=> %s::real[] LIMIT %s"
-        if metric == "euclidean":
+        elif metric == "euclidean":
             self._query = "SELECT id FROM items ORDER BY embedding <-> %s::real[] LIMIT %s"
         else:
             raise RuntimeError(f"unknown metric {metric}")
