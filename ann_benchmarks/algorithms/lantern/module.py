@@ -31,13 +31,9 @@ class Lantern(BaseANN):
         print("copying data...")
         with cur.copy("COPY items (id, embedding) FROM STDIN") as copy:
             for i, embedding in enumerate(X):
-                if i >= 10000:
-                    break
                 copy.write_row((i, embedding.tolist()))
         print("creating index...")
         if self._metric == "angular":
-            #print("Sleeping...")
-            #time.sleep(300)
             build_ix_cmd = "/tmp/lantern/build/lantern-create-index --uri postgresql://ann:ann@127.0.0.1:5432/ann" \
                             " --table items" \
                             " --column embedding" \
