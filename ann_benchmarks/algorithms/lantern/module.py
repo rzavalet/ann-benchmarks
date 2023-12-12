@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 import psycopg
+import time
 
 from ..base.module import BaseANN
 
@@ -14,7 +15,7 @@ class Lantern(BaseANN):
         self._cur = None
 
         if metric == "angular":
-            self._query = "SELECT id FROM items ORDER BY embedding <=> %s::real[] LIMIT %s"
+            self._query = "SELECT id FROM items ORDER BY embedding <-> %s::real[] LIMIT %s"
         elif metric == "euclidean":
             self._query = "SELECT id FROM items ORDER BY embedding <-> %s::real[] LIMIT %s"
         else:
@@ -30,16 +31,47 @@ class Lantern(BaseANN):
         print("copying data...")
         with cur.copy("COPY items (id, embedding) FROM STDIN") as copy:
             for i, embedding in enumerate(X):
+                if i >= 10000:
+                    break
                 copy.write_row((i, embedding.tolist()))
         print("creating index...")
         if self._metric == "angular":
+            #print("Sleeping...")
+            #time.sleep(300)
+            build_ix_cmd = "/tmp/lantern/build/lantern-create-index --uri postgresql://ann:ann@127.0.0.1:5432/ann" \
+                            " --table items" \
+                            " --column embedding" \
+                            " -m %d" \
+                            " --efc %d" \
+                            " -d %d" \
+                            " --metric-kind cos" \
+                            " --out /tmp/index.usearch" % (self._m, self._ef_construction, X.shape[1])
+            subprocess.run(build_ix_cmd, shell=True, check=True, stdout=sys.stdout, stderr=sys.stderr)
+
             cur.execute(
-                "CREATE INDEX ON items USING hnsw (embedding dist_cos_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
+                "CREATE INDEX ON items USING hnsw (embedding dist_cos_ops) WITH (_experimental_index_path='/tmp/index.usearch')"
             )
+
+            #cur.execute(
+            #    "CREATE INDEX ON items USING hnsw (embedding dist_cos_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
+            #)
         elif self._metric == "euclidean":
+            build_ix_cmd = "/tmp/lantern/build/lantern-create-index --uri postgresql://ann:ann@127.0.0.1:5432/ann" \
+                            " --table items" \
+                            " --column embedding" \
+                            " -m %d" \
+                            " --efc %d" \
+                            " -d %d" \
+                            " --metric-kind l2sq" \
+                            " --out /tmp/index.usearch" % (self._m, self._ef_construction, X.shape[1])
+            subprocess.run(build_ix_cmd, shell=True, check=True, stdout=sys.stdout, stderr=sys.stderr)
             cur.execute(
-                "CREATE INDEX ON items USING hnsw (embedding dist_l2sq_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
+                "CREATE INDEX ON items USING hnsw (embedding dist_l2sq_ops) WITH (_experimental_index_path='/tmp/index.usearch')"
             )
+
+            #cur.execute(
+            #    "CREATE INDEX ON items USING hnsw (embedding dist_l2sq_ops) WITH (M = %d, ef_construction = %d, dim = %d)" % (self._m, self._ef_construction, X.shape[1])
+            #)
         else:
             raise RuntimeError(f"unknown metric {self._metric}")
         print("done!")

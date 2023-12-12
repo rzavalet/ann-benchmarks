@@ -6,13 +6,16 @@ RUN git clone --recursive https://github.com/lanterndata/lantern.git /tmp/lanter
 
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake postgresql postgresql-server-dev-all
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake postgresql postgresql-server-dev-all wget
 RUN sh -c 'echo "local all all trust" > /etc/postgresql/14/main/pg_hba.conf'
+RUN sh -c 'echo "host all all 127.0.0.1/32 md5" >> /etc/postgresql/14/main/pg_hba.conf'
 RUN cd /tmp/lantern && \
   mkdir build && \
   cd build && \
   cmake .. && \
-	make install
+	make install && \
+  wget https://github.com/lanterndata/lantern_extras/releases/download/0.0.1/lantern-create-index-0.0.1-amd64.tar && \
+  tar xf lantern-create-index-0.0.1-amd64.tar
 
 USER postgres
 RUN service postgresql start && \
